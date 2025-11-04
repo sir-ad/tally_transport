@@ -83,24 +83,24 @@
 [Collection: Transport Transporters]
     Type                      : Transport Transporter
 
-[Collection: Trips - Transport]
+[Collection: TripsTransport]
     Type                      : Voucher
     Filter                    : TransportTripType
 
-[Collection: Trips - Planned]
-    Source Collection         : "Trips - Transport"
+[Collection: TripsPlanned]
+    Source Collection         : "TripsTransport"
     Filter                    : TripStatusPlanned
 
-[Collection: Trips - InTransit]
-    Source Collection         : "Trips - Transport"
+[Collection: TripsInTransit]
+    Source Collection         : "TripsTransport"
     Filter                    : TripStatusInTransit
 
-[Collection: Trips - Completed]
-    Source Collection         : "Trips - Transport"
+[Collection: TripsCompleted]
+    Source Collection         : "TripsTransport"
     Filter                    : TripStatusCompleted
 
 [Collection: TripsToday]
-    Source Collection         : "Trips - Transport"
+    Source Collection         : "TripsTransport"
     Filter                    : TripDateToday
 
 [Collection: TripConsignmentsToday]
@@ -109,7 +109,7 @@
 
 [Collection: TripConsignmentsAll]
     Walk                      : Inventory Entries
-    Source Collection         : "Trips - Transport"
+    Source Collection         : "TripsTransport"
 
 ;; ------------------------------------------------------------------------------
 ;; Vouchers & UDF storage for trips, consignments, expenses
@@ -522,7 +522,7 @@
     UpcomingTripsCount        : $$CollectionCount:"TripsUpcoming"
 
 [Collection: TripsUpcoming]
-    Source Collection         : "Trips - Transport"
+    Source Collection         : "TripsTransport"
     Filter                    : TripUpcomingFilter
 
 [Filter: TripUpcomingFilter]
@@ -540,7 +540,7 @@
 
 [Field: Dashboard Planned Value]
     Use                       : Amount Field
-    Set as                    : $$CollectionCount:"Trips - Planned"
+    Set as                    : $$CollectionCount:"TripsPlanned"
 
 [Line: Dashboard InTransit Line]
     Field                     : Dashboard InTransit Label, Dashboard InTransit Value
@@ -551,7 +551,7 @@
 
 [Field: Dashboard InTransit Value]
     Use                       : Amount Field
-    Set as                    : $$CollectionCount:"Trips - InTransit"
+    Set as                    : $$CollectionCount:"TripsInTransit"
 
 [Line: Dashboard Completed Line]
     Field                     : Dashboard Completed Label, Dashboard Completed Value
@@ -562,7 +562,7 @@
 
 [Field: Dashboard Completed Value]
     Use                       : Amount Field
-    Set as                    : $$CollectionCount:"Trips - Completed"
+    Set as                    : $$CollectionCount:"TripsCompleted"
 
 ;; ------------------------------------------------------------------------------
 ;; Trip Register Report
@@ -578,7 +578,7 @@
 [Part: Transport Trip Register Part]
     Line                      : Trip Register Header
     Add Line                  : After : Trip Register Header : Trip Register Line
-    Repeat                    : Trip Register Line : "Trips - Transport"
+    Repeat                    : Trip Register Line : "TripsTransport"
     Scroll                    : Vertical
 
 [Line: Trip Register Header]
@@ -634,7 +634,7 @@
 [Part: Transport Expense Part]
     Line                      : Vehicle Expense Header
     Add Line                  : After : Vehicle Expense Header : Vehicle Expense Line
-    Repeat                    : Vehicle Expense Line : "Trips - Transport"
+    Repeat                    : Vehicle Expense Line : "TripsTransport"
     Scroll                    : Vertical
 
 [Line: Vehicle Expense Header]
