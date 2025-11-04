@@ -104,10 +104,14 @@
     Filter                    : TripDateToday
 
 [Collection: TripConsignmentsToday]
+    Type                      : Inventory Entries
+    Belongs To                : Voucher
     Walk                      : Inventory Entries
     Source Collection         : "TripsToday"
 
 [Collection: TripConsignmentsAll]
+    Type                      : Inventory Entries
+    Belongs To                : Voucher
     Walk                      : Inventory Entries
     Source Collection         : "TripsTransport"
 
