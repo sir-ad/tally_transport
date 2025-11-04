@@ -146,7 +146,7 @@
 [Voucher Type: Transport Trip]
     Name                      : "Transport Trip"
     Parent                    : Journal
-    Voucher Numbering Method  : Automatic
+    Numbering Method          : Automatic
     Prevent Duplicates        : Yes
     Use Class For Numbering   : No
     Use for Cost Tracking     : Yes
