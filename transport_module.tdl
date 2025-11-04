@@ -1,0 +1,715 @@
+;; Transport Module for Tally Prime - Comprehensive Logistics Management
+;; Developed by seasoned TDL transport domain expert (30+ years experience)
+
+[System: UDF]
+    TVehicleNumber            : String    : 10001
+    TVehicleType              : String    : 10002
+    TVehicleCapacity          : Number    : 10003
+    TVehicleOwnerType         : String    : 10004
+    TVehicleInsurance         : String    : 10005
+    TVehiclePermit            : String    : 10006
+
+    TDriverLicense            : String    : 10011
+    TDriverContact            : String    : 10012
+    TDriverAddress            : String    : 10013
+
+    TTransporterContact       : String    : 10021
+    TTransporterGSTIN         : String    : 10022
+
+    TTripVehicleName          : String    : 10031
+    TTripDriverName           : String    : 10032
+    TTripTransporterName      : String    : 10033
+    TTripSource               : String    : 10034
+    TTripDestination          : String    : 10035
+    TTripStartExpected        : Date      : 10036
+    TTripEndExpected          : Date      : 10037
+    TTripStartActual          : Date      : 10038
+    TTripEndActual            : Date      : 10039
+    TTripStatus               : String    : 10040
+
+    TConsignmentInvoiceNo     : String    : 10051
+    TConsignmentDate          : Date      : 10052
+    TConsignmentAmount        : Amount    : 10053
+    TConsignmentQuantity      : Number    : 10054
+    TConsignmentWeight        : Number    : 10055
+
+    TTripExpenseType          : String    : 10061
+    TTripExpenseAmount        : Amount    : 10062
+    TTripExpenseRef           : String    : 10063
+
+;; ------------------------------------------------------------------------------
+;; Extend Company object to hold Transport Masters
+;; ------------------------------------------------------------------------------
+
+[#Object: Company]
+    TransportVehicles         : Collection : Transport Vehicles
+    TransportDrivers          : Collection : Transport Drivers
+    TransportTransporters     : Collection : Transport Transporters
+
+;; ------------------------------------------------------------------------------
+;; Object Definitions for Masters
+;; ------------------------------------------------------------------------------
+
+[Object: Transport Vehicle]
+    Name                      : String
+    Vehicle Number            : String    : TVehicleNumber
+    Vehicle Type              : String    : TVehicleType
+    Capacity (MT)             : Number    : TVehicleCapacity
+    Owner Type                : String    : TVehicleOwnerType
+    Insurance Details         : String    : TVehicleInsurance
+    Permit Details            : String    : TVehiclePermit
+
+[Object: Transport Driver]
+    Name                      : String
+    License Number            : String    : TDriverLicense
+    Contact Details           : String    : TDriverContact
+    Address                   : String    : TDriverAddress
+
+[Object: Transport Transporter]
+    Name                      : String
+    Contact Details           : String    : TTransporterContact
+    GSTIN                     : String    : TTransporterGSTIN
+
+;; ------------------------------------------------------------------------------
+;; Collections
+;; ------------------------------------------------------------------------------
+
+[Collection: Transport Vehicles]
+    Type                      : Transport Vehicle
+
+[Collection: Transport Drivers]
+    Type                      : Transport Driver
+
+[Collection: Transport Transporters]
+    Type                      : Transport Transporter
+
+[Collection: Trips - Transport]
+    Type                      : Voucher
+    Filter                    : TransportTripType
+
+[Collection: Trips - Planned]
+    Source Collection         : "Trips - Transport"
+    Filter                    : TripStatusPlanned
+
+[Collection: Trips - InTransit]
+    Source Collection         : "Trips - Transport"
+    Filter                    : TripStatusInTransit
+
+[Collection: Trips - Completed]
+    Source Collection         : "Trips - Transport"
+    Filter                    : TripStatusCompleted
+
+[Collection: TripsToday]
+    Source Collection         : "Trips - Transport"
+    Filter                    : TripDateToday
+
+[Collection: TripConsignmentsToday]
+    Walk                      : Inventory Entries
+    Source Collection         : "TripsToday"
+
+[Collection: TripConsignmentsAll]
+    Walk                      : Inventory Entries
+    Source Collection         : "Trips - Transport"
+
+;; ------------------------------------------------------------------------------
+;; Vouchers & UDF storage for trips, consignments, expenses
+;; ------------------------------------------------------------------------------
+
+[Object: Voucher]
+    Trip Vehicle Name         : String    : TTripVehicleName
+    Trip Driver Name          : String    : TTripDriverName
+    Trip Transporter Name     : String    : TTripTransporterName
+    Trip Source Location      : String    : TTripSource
+    Trip Destination Location : String    : TTripDestination
+    Trip Start Expected       : Date      : TTripStartExpected
+    Trip End Expected         : Date      : TTripEndExpected
+    Trip Start Actual         : Date      : TTripStartActual
+    Trip End Actual           : Date      : TTripEndActual
+    Trip Current Status       : String    : TTripStatus
+
+[Object: Inventory Entries]
+    Consignment Invoice No    : String    : TConsignmentInvoiceNo
+    Consignment Date          : Date      : TConsignmentDate
+    Consignment Amount        : Amount    : TConsignmentAmount
+    Consignment Quantity      : Number    : TConsignmentQuantity
+    Consignment Weight        : Number    : TConsignmentWeight
+
+[Object: Ledger Entries]
+    Trip Expense Type         : String    : TTripExpenseType
+    Trip Expense Amount       : Amount    : TTripExpenseAmount
+    Trip Expense Reference    : String    : TTripExpenseRef
+
+;; ------------------------------------------------------------------------------
+;; Voucher Type definition for Trip management
+;; ------------------------------------------------------------------------------
+
+[Voucher Type: Transport Trip]
+    Name                      : "Transport Trip"
+    Parent                    : Journal
+    Voucher Numbering Method  : Automatic
+    Prevent Duplicates        : Yes
+    Use Class For Numbering   : No
+    Use for Cost Tracking     : Yes
+    Narration                 : Yes
+
+;; ------------------------------------------------------------------------------
+;; Filters and Formulae for Dashboard Calculations
+;; ------------------------------------------------------------------------------
+
+[Filter: TransportTripType]
+    $$IsEqual:$VoucherTypeName:"Transport Trip"
+
+[Filter: TripStatusPlanned]
+    $$IsEqual:$"Trip Current Status":"Planned"
+
+[Filter: TripStatusInTransit]
+    $$IsEqual:$"Trip Current Status":"In-Transit"
+
+[Filter: TripStatusCompleted]
+    $$IsEqual:$"Trip Current Status":"Completed"
+
+[System: Formula]
+    TripsTodayCount           : $$CollectionCount:"TripsToday"
+    ConsignmentsTodayCount    : $$CollectionCount:"TripConsignmentsToday"
+
+[Filter: TripDateToday]
+    $$IsEqual:$Date:$$CurrentDate
+
+;; ------------------------------------------------------------------------------
+;; Gateway Menu Extension
+;; ------------------------------------------------------------------------------
+
+[#Menu: Gateway of Tally]
+    Add: Item: After : @@locQuit    : "Transport Module" : Display : Transport Module Menu
+
+[Menu: Transport Module Menu]
+    Title                     : "Transport Module"
+    Add                       : Item : "Transport Dashboard"          : Display : Transport Dashboard Report
+    Add                       : Item : "Vehicle Master"               : Display : Transport Vehicle Report
+    Add                       : Item : "Driver Master"                : Display : Transport Driver Report
+    Add                       : Item : "Transporter Master"           : Display : Transport Transporter Report
+    Add                       : Item : "Trip Entry"                   : Create Voucher : "Transport Trip"
+    Add                       : Item : "Trip Register"                : Display : Transport Trip Register Report
+    Add                       : Item : "Vehicle Expense Report"       : Display : Transport Expense Report
+    Add                       : Item : "Consignment Tracking Report"  : Display : Transport Consignment Report
+
+;; ------------------------------------------------------------------------------
+;; Vehicle Master Report & Forms
+;; ------------------------------------------------------------------------------
+
+[Report: Transport Vehicle Report]
+    Form                      : Transport Vehicle Form
+    Title                     : "Vehicle Master"
+
+[Form: Transport Vehicle Form]
+    Part                      : Transport Vehicle Part
+    On Create                 : Collection : Transport Vehicles
+    On Load                   : Collection : Transport Vehicles
+    Key                       : Create : Action : Create Transport Vehicle
+    Key                       : Alter  : Action : Alter Transport Vehicle
+
+[Part: Transport Vehicle Part]
+    Line                      : Transport Vehicle Line
+    Repeat                    : Transport Vehicle Line : "Transport Vehicles"
+    Scroll                    : Vertical
+
+[Line: Transport Vehicle Line]
+    Field                     : Vehicle Serial Field, Vehicle Name Field, Vehicle Number Field, Vehicle Type Field, Vehicle Capacity Field, Vehicle Owner Type Field
+    Right Field               : Vehicle Insurance Field
+    Right Field               : Vehicle Permit Field
+
+[Field: Vehicle Name Field]
+    Use                       : Name Field
+    Set as                    : $Name
+
+[Field: Vehicle Number Field]
+    Use                       : Name Field
+    Set as                    : $Vehicle Number
+
+[Field: Vehicle Type Field]
+    Use                       : Name Field
+    Set as                    : $Vehicle Type
+
+[Field: Vehicle Capacity Field]
+    Use                       : Amount Field
+    Set as                    : $"Capacity (MT)"
+
+[Field: Vehicle Owner Type Field]
+    Use                       : Name Field
+    Set as                    : $"Owner Type"
+
+[Field: Vehicle Insurance Field]
+    Use                       : Name Field
+    Set as                    : $"Insurance Details"
+
+[Field: Vehicle Permit Field]
+    Use                       : Name Field
+    Set as                    : $"Permit Details"
+
+[Field: Vehicle Serial Field]
+    Use                       : Number Field
+    Set as                    : $$Line
+
+[Action: Create Transport Vehicle]
+    Object                    : Transport Vehicle
+
+[Action: Alter Transport Vehicle]
+    Object                    : Transport Vehicle
+    Button                    : Alter
+
+;; ------------------------------------------------------------------------------
+;; Driver Master
+;; ------------------------------------------------------------------------------
+
+[Report: Transport Driver Report]
+    Form                      : Transport Driver Form
+    Title                     : "Driver Master"
+
+[Form: Transport Driver Form]
+    Part                      : Transport Driver Part
+    On Create                 : Collection : Transport Drivers
+    On Load                   : Collection : Transport Drivers
+    Key                       : Create : Action : Create Transport Driver
+    Key                       : Alter  : Action : Alter Transport Driver
+
+[Part: Transport Driver Part]
+    Line                      : Transport Driver Line
+    Repeat                    : Transport Driver Line : "Transport Drivers"
+    Scroll                    : Vertical
+
+[Line: Transport Driver Line]
+    Field                     : Driver Name Field, Driver License Field, Driver Contact Field, Driver Address Field
+
+[Field: Driver Name Field]
+    Use                       : Name Field
+    Set as                    : $Name
+
+[Field: Driver License Field]
+    Use                       : Name Field
+    Set as                    : $"License Number"
+
+[Field: Driver Contact Field]
+    Use                       : Name Field
+    Set as                    : $"Contact Details"
+
+[Field: Driver Address Field]
+    Use                       : Name Field
+    Set as                    : $Address
+
+[Action: Create Transport Driver]
+    Object                    : Transport Driver
+
+[Action: Alter Transport Driver]
+    Object                    : Transport Driver
+    Button                    : Alter
+
+;; ------------------------------------------------------------------------------
+;; Transporter Master
+;; ------------------------------------------------------------------------------
+
+[Report: Transport Transporter Report]
+    Form                      : Transport Transporter Form
+    Title                     : "Transporter Master"
+
+[Form: Transport Transporter Form]
+    Part                      : Transport Transporter Part
+    On Create                 : Collection : Transport Transporters
+    On Load                   : Collection : Transport Transporters
+    Key                       : Create : Action : Create Transport Transporter
+    Key                       : Alter  : Action : Alter Transport Transporter
+
+[Part: Transport Transporter Part]
+    Line                      : Transport Transporter Line
+    Repeat                    : Transport Transporter Line : "Transport Transporters"
+    Scroll                    : Vertical
+
+[Line: Transport Transporter Line]
+    Field                     : Transporter Name Field, Transporter Contact Field, Transporter GSTIN Field
+
+[Field: Transporter Name Field]
+    Use                       : Name Field
+    Set as                    : $Name
+
+[Field: Transporter Contact Field]
+    Use                       : Name Field
+    Set as                    : $"Contact Details"
+
+[Field: Transporter GSTIN Field]
+    Use                       : Name Field
+    Set as                    : $GSTIN
+
+[Action: Create Transport Transporter]
+    Object                    : Transport Transporter
+
+[Action: Alter Transport Transporter]
+    Object                    : Transport Transporter
+    Button                    : Alter
+
+;; ------------------------------------------------------------------------------
+;; Trip Entry Voucher Interface
+;; ------------------------------------------------------------------------------
+
+[Report: Transport Trip Voucher]
+    Use                       : Voucher Entry
+    Variable                  : SVVoucherType, SVCurrentCompany
+    Set                       : SVVoucherType : "Transport Trip"
+
+[#Form: Voucher Entry]
+    Add Part                  : After : VCH Narration : Transport Trip Custom Part
+
+[Part: Transport Trip Custom Part]
+    Line                      : Trip Basic Line
+    Add Line                  : After : Trip Basic Line : Trip Consignment Title
+    Add Line                  : After : Trip Consignment Title : Trip Consignment Line
+    Repeat                    : Trip Consignment Line : "Inventory Entries"
+    Add Line                  : After : Trip Consignment Line : Trip Expense Title
+    Add Line                  : After : Trip Expense Title : Trip Expense Line
+    Repeat                    : Trip Expense Line : "Ledger Entries"
+
+[Line: Trip Basic Line]
+    Field                     : Trip Vehicle Field, Trip Driver Field, Trip Transporter Field, Trip Source Field, Trip Destination Field, Trip Status Field
+    Right Field               : Trip Expected Start Field
+    Right Field               : Trip Expected End Field
+    Right Field               : Trip Actual Start Field
+    Right Field               : Trip Actual End Field
+
+[Field: Trip Vehicle Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Vehicle Name"
+    Table                     : Transport Vehicles
+
+[Field: Trip Driver Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Driver Name"
+    Table                     : Transport Drivers
+
+[Field: Trip Transporter Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Transporter Name"
+    Table                     : Transport Transporters
+
+[Field: Trip Source Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Source Location"
+
+[Field: Trip Destination Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Destination Location"
+
+[Field: Trip Status Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Current Status"
+    Table                     : List Status Values
+
+[Collection: List Status Values]
+    Type                      : List
+    Title                     : "Trip Status"
+    Format                    : "Planned"
+    Format                    : "In-Transit"
+    Format                    : "Completed"
+    Format                    : "Cancelled"
+
+[Field: Trip Expected Start Field]
+    Use                       : Short Date Field
+    Set as                    : $"Trip Start Expected"
+
+[Field: Trip Expected End Field]
+    Use                       : Short Date Field
+    Set as                    : $"Trip End Expected"
+
+[Field: Trip Actual Start Field]
+    Use                       : Short Date Field
+    Set as                    : $"Trip Start Actual"
+
+[Field: Trip Actual End Field]
+    Use                       : Short Date Field
+    Set as                    : $"Trip End Actual"
+
+[Part: Trip Consignment Title]
+    Line                      : Trip Consignment Header
+
+[Line: Trip Consignment Header]
+    Field                     : Medium Prompt
+    Set as                    : "Consignments"
+
+[Line: Trip Consignment Line]
+    Field                     : Consignment Invoice Field, Consignment Date Field, Consignment Amount Field, Consignment Quantity Field, Consignment Weight Field
+
+[Field: Consignment Invoice Field]
+    Use                       : Name Field
+    Set as                    : $"Consignment Invoice No"
+
+[Field: Consignment Date Field]
+    Use                       : Short Date Field
+    Set as                    : $"Consignment Date"
+
+[Field: Consignment Amount Field]
+    Use                       : Amount Field
+    Set as                    : $"Consignment Amount"
+
+[Field: Consignment Quantity Field]
+    Use                       : Number Field
+    Set as                    : $"Consignment Quantity"
+
+[Field: Consignment Weight Field]
+    Use                       : Number Field
+    Set as                    : $"Consignment Weight"
+
+[Part: Trip Expense Title]
+    Line                      : Trip Expense Header
+
+[Line: Trip Expense Header]
+    Field                     : Medium Prompt
+    Set as                    : "Trip Expenses"
+
+[Line: Trip Expense Line]
+    Field                     : Trip Expense Type Field, Trip Expense Amount Field, Trip Expense Ref Field
+
+[Field: Trip Expense Type Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Expense Type"
+    Table                     : List Expense Types
+
+[Collection: List Expense Types]
+    Type                      : List
+    Title                     : "Expense Types"
+    Format                    : "Fuel"
+    Format                    : "Toll"
+    Format                    : "Driver Wages"
+    Format                    : "Maintenance"
+    Format                    : "Other"
+
+[Field: Trip Expense Amount Field]
+    Use                       : Amount Field
+    Set as                    : $"Trip Expense Amount"
+
+[Field: Trip Expense Ref Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Expense Reference"
+
+;; ------------------------------------------------------------------------------
+;; Dashboard Report
+;; ------------------------------------------------------------------------------
+
+[Report: Transport Dashboard Report]
+    Form                      : Transport Dashboard Form
+    Title                     : "Transport Dashboard"
+
+[Form: Transport Dashboard Form]
+    Part                      : Transport Dashboard Summary Part, Transport Dashboard Detail Part
+    Width                     : 100 %
+    Height                    : 100 %
+
+[Part: Transport Dashboard Summary Part]
+    Line                      : Dashboard Summary Line
+
+[Line: Dashboard Summary Line]
+    Field                     : Dashboard Trips Today Field, Dashboard Consignments Today Field, Dashboard Upcoming Trips Field
+
+[Field: Dashboard Trips Today Field]
+    Use                       : Name Field
+    Set as                    : "Trips Today: " + $$String:@@TripsTodayCount
+
+[Field: Dashboard Consignments Today Field]
+    Use                       : Name Field
+    Set as                    : "Consignments Today: " + $$String:@@ConsignmentsTodayCount
+
+[Field: Dashboard Upcoming Trips Field]
+    Use                       : Name Field
+    Set as                    : "Upcoming Trips (24 Hrs): " + $$String:@@UpcomingTripsCount
+
+[System: Formula]
+    UpcomingTripsCount        : $$CollectionCount:"TripsUpcoming"
+
+[Collection: TripsUpcoming]
+    Source Collection         : "Trips - Transport"
+    Filter                    : TripUpcomingFilter
+
+[Filter: TripUpcomingFilter]
+    $$IsBetween:$"Trip Start Expected":$$CurrentDate:$$AddDays:$$CurrentDate:1
+
+[Part: Transport Dashboard Detail Part]
+    Line                      : Dashboard Planned Line, Dashboard InTransit Line, Dashboard Completed Line
+
+[Line: Dashboard Planned Line]
+    Field                     : Dashboard Planned Label, Dashboard Planned Value
+
+[Field: Dashboard Planned Label]
+    Use                       : Name Field
+    Set as                    : "Planned Trips"
+
+[Field: Dashboard Planned Value]
+    Use                       : Amount Field
+    Set as                    : $$CollectionCount:"Trips - Planned"
+
+[Line: Dashboard InTransit Line]
+    Field                     : Dashboard InTransit Label, Dashboard InTransit Value
+
+[Field: Dashboard InTransit Label]
+    Use                       : Name Field
+    Set as                    : "In-Transit Trips"
+
+[Field: Dashboard InTransit Value]
+    Use                       : Amount Field
+    Set as                    : $$CollectionCount:"Trips - InTransit"
+
+[Line: Dashboard Completed Line]
+    Field                     : Dashboard Completed Label, Dashboard Completed Value
+
+[Field: Dashboard Completed Label]
+    Use                       : Name Field
+    Set as                    : "Completed Trips"
+
+[Field: Dashboard Completed Value]
+    Use                       : Amount Field
+    Set as                    : $$CollectionCount:"Trips - Completed"
+
+;; ------------------------------------------------------------------------------
+;; Trip Register Report
+;; ------------------------------------------------------------------------------
+
+[Report: Transport Trip Register Report]
+    Form                      : Transport Trip Register Form
+    Title                     : "Trip Register"
+
+[Form: Transport Trip Register Form]
+    Part                      : Transport Trip Register Part
+
+[Part: Transport Trip Register Part]
+    Line                      : Trip Register Header
+    Add Line                  : After : Trip Register Header : Trip Register Line
+    Repeat                    : Trip Register Line : "Trips - Transport"
+    Scroll                    : Vertical
+
+[Line: Trip Register Header]
+    Field                     : Trip Register Date Title, Trip Register Vehicle Title, Trip Register Route Title, Trip Register Status Title
+    Local                     : Field : Default : Set as : "Date"
+
+[Field: Trip Register Date Title]
+    Use                       : Name Field
+    Set as                    : "Date"
+
+[Field: Trip Register Vehicle Title]
+    Use                       : Name Field
+    Set as                    : "Vehicle"
+
+[Field: Trip Register Route Title]
+    Use                       : Name Field
+    Set as                    : "Route"
+
+[Field: Trip Register Status Title]
+    Use                       : Name Field
+    Set as                    : "Status"
+
+[Line: Trip Register Line]
+    Field                     : Trip Register Date Field, Trip Register Vehicle Field, Trip Register Route Field, Trip Register Status Field
+
+[Field: Trip Register Date Field]
+    Use                       : Short Date Field
+    Set as                    : $Date
+
+[Field: Trip Register Vehicle Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Vehicle Name"
+
+[Field: Trip Register Route Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Source Location" + " -> " + $"Trip Destination Location"
+
+[Field: Trip Register Status Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Current Status"
+
+;; ------------------------------------------------------------------------------
+;; Vehicle Expense Report
+;; ------------------------------------------------------------------------------
+
+[Report: Transport Expense Report]
+    Form                      : Transport Expense Form
+    Title                     : "Vehicle Expense Report"
+
+[Form: Transport Expense Form]
+    Part                      : Transport Expense Part
+
+[Part: Transport Expense Part]
+    Line                      : Vehicle Expense Header
+    Add Line                  : After : Vehicle Expense Header : Vehicle Expense Line
+    Repeat                    : Vehicle Expense Line : "Trips - Transport"
+    Scroll                    : Vertical
+
+[Line: Vehicle Expense Header]
+    Field                     : Vehicle Expense Vehicle Title, Vehicle Expense Total Title
+
+[Field: Vehicle Expense Vehicle Title]
+    Use                       : Name Field
+    Set as                    : "Vehicle"
+
+[Field: Vehicle Expense Total Title]
+    Use                       : Name Field
+    Set as                    : "Total Expenses"
+
+[Line: Vehicle Expense Line]
+    Field                     : Vehicle Expense Vehicle Field, Vehicle Expense Amount Field
+
+[Field: Vehicle Expense Vehicle Field]
+    Use                       : Name Field
+    Set as                    : $"Trip Vehicle Name"
+
+[Field: Vehicle Expense Amount Field]
+    Use                       : Amount Field
+    Set as                    : $$TotalExpenseForTrip
+
+[System: Formula]
+    TotalExpenseForTrip       : $$Total:$"Trip Expense Amount":"Ledger Entries"
+
+;; ------------------------------------------------------------------------------
+;; Consignment Tracking Report
+;; ------------------------------------------------------------------------------
+
+[Report: Transport Consignment Report]
+    Form                      : Transport Consignment Form
+    Title                     : "Consignment Tracking"
+    Collection                : "TripConsignmentsAll"
+
+[Form: Transport Consignment Form]
+    Part                      : Transport Consignment Part
+
+[Part: Transport Consignment Part]
+    Line                      : Consignment Header Line
+    Add Line                  : After : Consignment Header Line : Consignment Detail Line
+    Repeat                    : Consignment Detail Line : "TripConsignmentsAll"
+    Scroll                    : Vertical
+
+[Line: Consignment Header Line]
+    Field                     : Consignment Header Trip, Consignment Header Invoice, Consignment Header Status
+
+[Field: Consignment Header Trip]
+    Use                       : Name Field
+    Set as                    : "Trip"
+
+[Field: Consignment Header Invoice]
+    Use                       : Name Field
+    Set as                    : "Invoice"
+
+[Field: Consignment Header Status]
+    Use                       : Name Field
+    Set as                    : "Status"
+
+[Line: Consignment Detail Line]
+    Field                     : Consignment Trip Field, Consignment Invoice Field, Consignment Status Field
+
+[Field: Consignment Trip Field]
+    Use                       : Name Field
+    Set as                    : $Parent:$Name
+
+[Field: Consignment Invoice Field]
+    Use                       : Name Field
+    Set as                    : $"Consignment Invoice No"
+
+[Field: Consignment Status Field]
+    Use                       : Name Field
+    Set as                    : $Parent:$"Trip Current Status"
+
+;; ------------------------------------------------------------------------------
+;; End of Transport Module TDL
+;; ------------------------------------------------------------------------------
