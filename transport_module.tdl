@@ -370,11 +370,11 @@
 
 [Part: Transport Trip Custom Part]
     Line                      : Trip Basic Line
-    Add Line                  : After : Trip Basic Line : Trip Consignment Title
-    Add Line                  : After : Trip Consignment Title : Trip Consignment Line
+    Add Line                  : After : Trip Basic Line : Trip Consignment Header
+    Add Line                  : After : Trip Consignment Header : Trip Consignment Line
     Repeat                    : Trip Consignment Line : "Inventory Entries"
-    Add Line                  : After : Trip Consignment Line : Trip Expense Title
-    Add Line                  : After : Trip Expense Title : Trip Expense Line
+    Add Line                  : After : Trip Consignment Line : Trip Expense Header
+    Add Line                  : After : Trip Expense Header : Trip Expense Line
     Repeat                    : Trip Expense Line : "Ledger Entries"
 
 [Line: Trip Basic Line]
@@ -446,9 +446,6 @@
     Set as                    : $"Trip End Actual"
     Storage                   : "Trip End Actual"
 
-[Part: Trip Consignment Title]
-    Line                      : Trip Consignment Header
-
 [Line: Trip Consignment Header]
     Field                     : Medium Prompt
     Set as                    : "Consignments"
@@ -480,9 +477,6 @@
     Use                       : Number Field
     Set as                    : $"Consignment Weight"
     Storage                   : "Consignment Weight"
-
-[Part: Trip Expense Title]
-    Line                      : Trip Expense Header
 
 [Line: Trip Expense Header]
     Field                     : Medium Prompt
