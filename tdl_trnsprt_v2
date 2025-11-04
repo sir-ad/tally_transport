@@ -1,0 +1,1108 @@
+;; =============================================================================
+;; TRANSPORT MANAGEMENT MODULE FOR TALLY PRIME – v2.0 (Redraft)
+;; Stable, compile-ready build with corrected VoucherType, collections, filters,
+;; menu wiring, and safe totals/averages.
+;; Last Updated: 04-Nov-2025
+;; =============================================================================
+
+;; -----------------------------------------------------------------------------
+;; SECTION 1: USER DEFINED FIELDS (UDF) DECLARATION
+;; -----------------------------------------------------------------------------
+[System: UDF]
+
+;; Vehicle Master UDFs (10001-10010)
+TVehicleNumber          : String : 10001
+TVehicleType            : String : 10002
+TVehicleCapacity        : Number : 10003
+TVehicleOwnerType       : String : 10004
+TVehicleInsurance       : String : 10005
+TVehiclePermit          : String : 10006
+TVehicleFitnessExpiry   : Date   : 10007
+
+;; Driver Master UDFs (10011-10020)
+TDriverLicense          : String : 10011
+TDriverContact          : String : 10012
+TDriverAddress          : String : 10013
+TDriverLicenseExpiry    : Date   : 10014
+TDriverEmergencyContact : String : 10015
+
+;; Transporter Master UDFs (10021-10030)
+TTransporterContact     : String : 10021
+TTransporterGSTIN       : String : 10022
+TTransporterPAN         : String : 10023
+TTransporterEmail       : String : 10024
+
+;; Trip Voucher UDFs (10031-10050)
+TTripVehicleName        : String : 10031
+TTripDriverName         : String : 10032
+TTripTransporterName    : String : 10033
+TTripSource             : String : 10034
+TTripDestination        : String : 10035
+TTripStartExpected      : Date   : 10036
+TTripEndExpected        : Date   : 10037
+TTripStartActual        : Date   : 10038
+TTripEndActual          : Date   : 10039
+TTripStatus             : String : 10040
+TTripDistance           : Number : 10041
+TTripFreightAmount      : Amount : 10042
+
+;; Consignment (Inventory Entry) UDFs (10051-10060)
+TConsignmentInvoiceNo   : String : 10051
+TConsignmentDate        : Date   : 10052
+TConsignmentAmount      : Amount : 10053
+TConsignmentQuantity    : Number : 10054
+TConsignmentWeight      : Number : 10055
+TConsignmentParty       : String : 10056
+TConsignmentStatus      : String : 10057
+
+;; Trip Expense (Ledger Entry) UDFs (10061-10070)
+TTripExpenseType        : String : 10061
+TTripExpenseAmount      : Amount : 10062
+TTripExpenseRef         : String : 10063
+TTripExpenseDate        : Date   : 10064
+
+;; -----------------------------------------------------------------------------
+;; SECTION 2: EXTEND COMPANY OBJECT (optional master collections)
+;; -----------------------------------------------------------------------------
+[#Object: Company]
+    TransportVehicles    : Collection : Transport Vehicles
+    TransportDrivers     : Collection : Transport Drivers
+    TransportTransporters: Collection : Transport Transporters
+
+;; -----------------------------------------------------------------------------
+;; SECTION 3: MASTER OBJECT DEFINITIONS
+;; -----------------------------------------------------------------------------
+[Object: Transport Vehicle]
+    Object Type      : Master
+    Name             : String
+    Parent           : $$NullValue
+
+    ;; Basic
+    Vehicle Number   : String : TVehicleNumber
+    Vehicle Type     : String : TVehicleType
+    Capacity (MT)    : Number : TVehicleCapacity
+    Owner Type       : String : TVehicleOwnerType
+
+    ;; Compliance
+    Insurance Details: String : TVehicleInsurance
+    Permit Details   : String : TVehiclePermit
+    Fitness Expiry   : Date   : TVehicleFitnessExpiry
+
+    ;; Audit
+    Is Active        : Logical
+    Remarks          : String
+
+[Object: Transport Driver]
+    Object Type      : Master
+    Name             : String
+    Parent           : $$NullValue
+
+    ;; Basic
+    License Number   : String : TDriverLicense
+    Contact Details  : String : TDriverContact
+    Address          : String : TDriverAddress
+
+    ;; Extended
+    License Expiry   : Date   : TDriverLicenseExpiry
+    Emergency Contact: String : TDriverEmergencyContact
+
+    ;; Audit
+    Is Active        : Logical
+    Remarks          : String
+
+[Object: Transport Transporter]
+    Object Type      : Master
+    Name             : String
+    Parent           : $$NullValue
+
+    ;; Basic
+    Contact Details  : String : TTransporterContact
+    GSTIN            : String : TTransporterGSTIN
+    PAN              : String : TTransporterPAN
+    Email            : String : TTransporterEmail
+
+    ;; Audit
+    Is Active        : Logical
+    Remarks          : String
+
+;; -----------------------------------------------------------------------------
+;; SECTION 4: COLLECTION DEFINITIONS
+;; -----------------------------------------------------------------------------
+[Collection: Transport Vehicles]
+    Type : Transport Vehicle
+    Fetch: Name, "Vehicle Number", "Vehicle Type", "Capacity (MT)", "Owner Type"
+
+[Collection: Transport Drivers]
+    Type : Transport Driver
+    Fetch: Name, "License Number", "Contact Details"
+
+[Collection: Transport Transporters]
+    Type : Transport Transporter
+    Fetch: Name, GSTIN, "Contact Details"
+
+;; VoucherType handle + trips base
+[System: Formula]
+    VchTypeTransportTrip : $$VchType:"Transport Trip"
+
+[Collection: TripsTransport]
+    Type     : Voucher
+    Child Of : @@VchTypeTransportTrip
+    Fetch    : Date, VoucherNumber, "Trip Vehicle Name", "Trip Driver Name", \
+               "Trip Transporter Name", "Trip Source Location", "Trip Destination Location", \
+               "Trip Start Expected", "Trip End Expected", "Trip Start Actual", "Trip End Actual", \
+               "Trip Current Status", "Trip Distance KM", "Trip Freight Amount", \
+               InventoryEntries.*, LedgerEntries.*
+
+[Collection: TripsPlanned]     Source Collection : TripsTransport  Filter : TripStatusPlanned
+[Collection: TripsInTransit]   Source Collection : TripsTransport  Filter : TripStatusInTransit
+[Collection: TripsCompleted]   Source Collection : TripsTransport  Filter : TripStatusCompleted
+[Collection: TripsCancelled]   Source Collection : TripsTransport  Filter : TripStatusCancelled
+[Collection: TripsToday]       Source Collection : TripsTransport  Filter : TripDateToday
+[Collection: TripsUpcoming]    Source Collection : TripsTransport  Filter : TripUpcomingFilter
+
+;; Consignment walkers
+[Collection: TripConsignmentsToday]
+    Source Collection : TripsToday
+    Walk              : Inventory Entries
+    Fetch             : "Consignment Invoice No", "Consignment Date", \
+                        "Consignment Amount", "Consignment Quantity", \
+                        "Consignment Weight", "Consignment Party", "Consignment Status"
+
+[Collection: TripConsignmentsAll]
+    Source Collection : TripsTransport
+    Walk              : Inventory Entries
+    Fetch             : "Consignment Invoice No", "Consignment Date", \
+                        "Consignment Amount", "Consignment Quantity", \
+                        "Consignment Weight", "Consignment Party", "Consignment Status"
+
+;; Expense walkers
+[Collection: TripExpensesAll]
+    Source Collection : TripsTransport
+    Walk              : Ledger Entries
+    Fetch             : "Trip Expense Type", "Trip Expense Amount", \
+                        "Trip Expense Reference", "Trip Expense Date"
+
+;; -----------------------------------------------------------------------------
+;; SECTION 5: VOUCHER / ENTRY EXTENSIONS
+;; -----------------------------------------------------------------------------
+[#Object: Voucher]
+    ;; Trip core
+    Trip Vehicle Name        : String : TTripVehicleName
+    Trip Driver Name         : String : TTripDriverName
+    Trip Transporter Name    : String : TTripTransporterName
+    Trip Source Location     : String : TTripSource
+    Trip Destination Location: String : TTripDestination
+
+    ;; Schedule
+    Trip Start Expected      : Date   : TTripStartExpected
+    Trip End Expected        : Date   : TTripEndExpected
+    Trip Start Actual        : Date   : TTripStartActual
+    Trip End Actual          : Date   : TTripEndActual
+
+    ;; Metrics
+    Trip Current Status      : String : TTripStatus
+    Trip Distance KM         : Number : TTripDistance
+    Trip Freight Amount      : Amount : TTripFreightAmount
+
+[#Object: Inventory Entries]
+    Consignment Invoice No   : String : TConsignmentInvoiceNo
+    Consignment Date         : Date   : TConsignmentDate
+    Consignment Amount       : Amount : TConsignmentAmount
+    Consignment Quantity     : Number : TConsignmentQuantity
+    Consignment Weight       : Number : TConsignmentWeight
+    Consignment Party        : String : TConsignmentParty
+    Consignment Status       : String : TConsignmentStatus
+
+[#Object: Ledger Entries]
+    Trip Expense Type        : String : TTripExpenseType
+    Trip Expense Amount      : Amount : TTripExpenseAmount
+    Trip Expense Reference   : String : TTripExpenseRef
+    Trip Expense Date        : Date   : TTripExpenseDate
+
+;; -----------------------------------------------------------------------------
+;; SECTION 6: VOUCHER TYPE DEFINITION
+;; -----------------------------------------------------------------------------
+[Voucher Type: Transport Trip]
+    Name                     : "Transport Trip"
+    Parent                   : $$VchType:"Memorandum"
+    Numbering Method         : Automatic
+    Prevent Duplicates       : Yes
+    Narration                : Yes
+    Print After Saving       : No
+    Allow Zero Valued Voucher: Yes
+
+;; -----------------------------------------------------------------------------
+;; SECTION 7: FILTERS
+;; -----------------------------------------------------------------------------
+[Filter: TripStatusPlanned]     $"Trip Current Status" = "Planned"
+[Filter: TripStatusInTransit]   $"Trip Current Status" = "In-Transit"
+[Filter: TripStatusCompleted]   $"Trip Current Status" = "Completed"
+[Filter: TripStatusCancelled]   $"Trip Current Status" = "Cancelled"
+
+[Filter: TripDateToday]         $Date = ##SVCurrentDate
+[Filter: TripUpcomingFilter]    $$IsBetween:$"Trip Start Expected":##SVCurrentDate:(##SVCurrentDate + 1)
+
+;; -----------------------------------------------------------------------------
+;; SECTION 8: SYSTEM FORMULAS (KPIs, totals)
+;; -----------------------------------------------------------------------------
+[System: Formula]
+    TripsTodayCount           : $$CollectionCount:TripsToday
+    ConsignmentsTodayCount    : $$CollectionCount:TripConsignmentsToday
+    UpcomingTripsCount        : $$CollectionCount:TripsUpcoming
+    PlannedTripsCount         : $$CollectionCount:TripsPlanned
+    InTransitTripsCount       : $$CollectionCount:TripsInTransit
+    CompletedTripsCount       : $$CollectionCount:TripsCompleted
+    TotalVehiclesCount        : $$CollectionCount:Transport Vehicles
+
+    ;; For current voucher context (in exploded/child parts)
+    TotalExpenseForTrip       : $$Total:Ledger Entries:$"Trip Expense Amount"
+
+    ;; Global aggregates
+    TotalAllExpenses          : $$Total:TripExpensesAll:$"Trip Expense Amount"
+
+    ;; Average metrics (safe divide)
+    TotalDistanceAll          : $$Total:TripsTransport:$"Trip Distance KM"
+    TripCountAll              : $$CollectionCount:TripsTransport
+    AvgDistance               : IF @@TripCountAll = 0 THEN 0 ELSE (@@TotalDistanceAll / @@TripCountAll)
+
+    TotalFreightAll           : $$Total:TripsTransport:$"Trip Freight Amount"
+    AvgFreight                : IF @@TripCountAll = 0 THEN 0 ELSE (@@TotalFreightAll / @@TripCountAll)
+
+;; -----------------------------------------------------------------------------
+;; SECTION 9: GATEWAY MENU INTEGRATION
+;; -----------------------------------------------------------------------------
+[#Menu: Gateway of Tally]
+    Add : Item : Before : @@locQuit : "Transport Module" : Menu : Transport Module Menu
+
+[Menu: Transport Module Menu]
+    Title : "Transport Module"
+    Width : 50% Screen
+
+    Item : "Transport Dashboard"            : Display : Transport Dashboard Report
+    Item : "Vehicle Master"                 : Display : Transport Vehicle Report
+    Item : "Driver Master"                  : Display : Transport Driver Report
+    Item : "Transporter Master"             : Display : Transport Transporter Report
+    Item : "New Trip Entry"                 : Create  Voucher : "Transport Trip"
+    Item : "Alter Trip Entry"               : Alter   Voucher : "Transport Trip"
+    Item : "Trip Register"                  : Display : Transport Trip Register Report
+    Item : "Vehicle Expense Report"         : Display : Transport Expense Report
+    Item : "Consignment Tracking Report"    : Display : Transport Consignment Report
+    Item : "Vehicle Utilization Report"     : Display : Transport Utilization Report
+
+;; -----------------------------------------------------------------------------
+;; SECTION 10: VEHICLE MASTER – REPORT & FORM
+;; -----------------------------------------------------------------------------
+[Report: Transport Vehicle Report]
+    Form  : Transport Vehicle Form
+    Title : "Vehicle Master"
+
+[Form: Transport Vehicle Form]
+    Parts : Transport Vehicle Part
+
+[Part: Transport Vehicle Part]
+    Line            : Transport Vehicle Title, Transport Vehicle Line
+    Repeat          : Transport Vehicle Line : Transport Vehicles
+    Scroll          : Vertical
+    Common Border   : Yes
+    Total           : Vehicle Count Line
+
+[Line: Transport Vehicle Title]
+    Field : Medium Prompt, Medium Prompt, Medium Prompt, Medium Prompt, Short Prompt
+    Local : Field : Medium Prompt : Info : "Sr."
+    Local : Field : Medium Prompt : Info : "Vehicle Name"
+    Local : Field : Medium Prompt : Info : "Number"
+    Local : Field : Medium Prompt : Info : "Type"
+    Local : Field : Short  Prompt : Info : "Capacity (MT)"
+    Border: Thin Bottom
+
+[Line: Transport Vehicle Line]
+    Field   : Vehicle Serial Number, Vehicle Name Field, Vehicle Number Field, \
+              Vehicle Type Field, Vehicle Capacity Field
+    Explode : Vehicle Detail Part
+
+[Line: Vehicle Count Line]
+    Field : Medium Prompt, Vehicle Total Count
+    Local : Field : Medium Prompt : Set As : "Total Vehicles:"
+    Border: Thin Top
+
+[Field: Vehicle Serial Number] Use : Number Field  Set as : $$Line        Width : 5  Align : Right
+[Field: Vehicle Name Field]    Use : Name Field    Set as : $Name         Storage : Name         Width : 20
+[Field: Vehicle Number Field]  Use : Name Field    Set as : $"Vehicle Number"  Storage : "Vehicle Number"  Width : 15  Validate : NOT $$IsEmpty:$$Value
+[Field: Vehicle Type Field]    Use : Name Field    Set as : $"Vehicle Type"    Storage : "Vehicle Type"    Width : 15  Show Table : Always  Table : List Vehicle Types, Format
+[Field: Vehicle Capacity Field]Use : Number Field  Set as : $"Capacity (MT)"   Storage : "Capacity (MT)"   Width : 12  Format : "##,##0.00 MT"
+[Field: Vehicle Total Count]   Use : Number Field  Set as : @@TotalVehiclesCount Width : 8
+
+[Collection: List Vehicle Types]
+    Type  : List
+    Title : "Vehicle Types"
+    Format: "Truck - Small"
+    Format: "Truck - Medium"
+    Format: "Truck - Large"
+    Format: "Container 20ft"
+    Format: "Container 40ft"
+    Format: "Trailer"
+    Format: "Tanker"
+    Format: "Refrigerated"
+
+[Part: Vehicle Detail Part]
+    Line  : Vehicle Owner Line, Vehicle Insurance Line, Vehicle Permit Line, Vehicle Fitness Line
+    Border: Thin Right Left Bottom
+
+[Line: Vehicle Owner Line]
+    Field : Name Prompt, Vehicle Owner Type Field
+    Local : Field : Name Prompt : Set As : " Owner Type :"
+
+[Field: Vehicle Owner Type Field]
+    Use       : Name Field
+    Set as    : $"Owner Type"
+    Storage   : "Owner Type"
+    Show Table: Always
+    Table     : List Owner Types, Format
+
+[Collection: List Owner Types]
+    Type  : List
+    Format: "Self Owned"
+    Format: "Leased"
+    Format: "Contract"
+
+[Line: Vehicle Insurance Line]
+    Field : Name Prompt, Vehicle Insurance Field
+    Local : Field : Name Prompt : Set As : " Insurance :"
+
+[Field: Vehicle Insurance Field] Use : Name Field  Set as : $"Insurance Details" Storage : "Insurance Details" Width : 40
+
+[Line: Vehicle Permit Line]
+    Field : Name Prompt, Vehicle Permit Field
+    Local : Field : Name Prompt : Set As : " Permit :"
+
+[Field: Vehicle Permit Field]   Use : Name Field  Set as : $"Permit Details"    Storage : "Permit Details"    Width : 40
+
+[Line: Vehicle Fitness Line]
+    Field : Name Prompt, Vehicle Fitness Field
+    Local : Field : Name Prompt : Set As : " Fitness Exp :"
+
+[Field: Vehicle Fitness Field]  Use : Short Date Field  Set as : $"Fitness Expiry" Storage : "Fitness Expiry"
+
+;; -----------------------------------------------------------------------------
+;; SECTION 11: DRIVER MASTER – REPORT & FORM
+;; -----------------------------------------------------------------------------
+[Report: Transport Driver Report]
+    Form  : Transport Driver Form
+    Title : "Driver Master"
+
+[Form: Transport Driver Form]
+    Parts : Transport Driver Part
+
+[Part: Transport Driver Part]
+    Line          : Transport Driver Title, Transport Driver Line
+    Repeat        : Transport Driver Line : Transport Drivers
+    Scroll        : Vertical
+    Common Border : Yes
+    Total         : Driver Count Line
+
+[Line: Transport Driver Title]
+    Field : Short Prompt, Medium Prompt, Medium Prompt, Medium Prompt
+    Local : Field : Short  Prompt : Info : "Sr."
+    Local : Field : Medium Prompt : Info : "Driver Name"
+    Local : Field : Medium Prompt : Info : "License No."
+    Local : Field : Medium Prompt : Info : "Contact"
+    Border: Thin Bottom
+
+[Line: Transport Driver Line]
+    Field   : Driver Serial Number, Driver Name Field, Driver License Field, Driver Contact Field
+    Explode : Driver Detail Part
+
+[Line: Driver Count Line]
+    Field : Medium Prompt, Driver Total Count
+    Local : Field : Medium Prompt : Set As : "Total Drivers:"
+    Border: Thin Top
+
+[Field: Driver Serial Number] Use : Number Field Set as : $$Line Width : 5
+[Field: Driver Name Field]    Use : Name Field   Set as : $Name  Storage : Name            Width : 25
+[Field: Driver License Field] Use : Name Field   Set as : $"License Number"  Storage : "License Number"  Width : 18  Validate : NOT $$IsEmpty:$$Value
+[Field: Driver Contact Field] Use : Name Field   Set as : $"Contact Details" Storage : "Contact Details" Width : 15
+[Field: Driver Total Count]   Use : Number Field Set as : $$CollectionCount:Transport Drivers
+
+[Part: Driver Detail Part]
+    Line  : Driver Address Line, Driver License Expiry Line, Driver Emergency Line
+    Border: Thin Right Left Bottom
+
+[Line: Driver Address Line]
+    Field : Name Prompt, Driver Address Field
+    Local : Field : Name Prompt : Set As : " Address :"
+
+[Field: Driver Address Field]       Use : Name Field       Set as : $Address Storage : Address Width : 50
+
+[Line: Driver License Expiry Line]
+    Field : Name Prompt, Driver License Expiry Field
+    Local : Field : Name Prompt : Set As : " License Exp :"
+
+[Field: Driver License Expiry Field] Use : Short Date Field Set as : $"License Expiry" Storage : "License Expiry"
+
+[Line: Driver Emergency Line]
+    Field : Name Prompt, Driver Emergency Contact Field
+    Local : Field : Name Prompt : Set As : " Emergency :"
+
+[Field: Driver Emergency Contact Field] Use : Name Field Set as : $"Emergency Contact" Storage : "Emergency Contact" Width : 20
+
+;; -----------------------------------------------------------------------------
+;; SECTION 12: TRANSPORTER MASTER – REPORT & FORM
+;; -----------------------------------------------------------------------------
+[Report: Transport Transporter Report]
+    Form  : Transport Transporter Form
+    Title : "Transporter Master"
+
+[Form: Transport Transporter Form]
+    Parts : Transport Transporter Part
+
+[Part: Transport Transporter Part]
+    Line          : Transport Transporter Title, Transport Transporter Line
+    Repeat        : Transport Transporter Line : Transport Transporters
+    Scroll        : Vertical
+    Common Border : Yes
+    Total         : Transporter Count Line
+
+[Line: Transport Transporter Title]
+    Field : Short Prompt, Medium Prompt, Medium Prompt, Medium Prompt
+    Local : Field : Short  Prompt : Info : "Sr."
+    Local : Field : Medium Prompt : Info : "Transporter Name"
+    Local : Field : Medium Prompt : Info : "GSTIN"
+    Local : Field : Medium Prompt : Info : "Contact"
+    Border: Thin Bottom
+
+[Line: Transport Transporter Line]
+    Field   : Transporter Serial Number, Transporter Name Field, Transporter GSTIN Field, Transporter Contact Field
+    Explode : Transporter Detail Part
+
+[Line: Transporter Count Line]
+    Field : Medium Prompt, Transporter Total Count
+    Local : Field : Medium Prompt : Set As : "Total Transporters:"
+    Border: Thin Top
+
+[Field: Transporter Serial Number] Use : Number Field Set as : $$Line Width : 5
+[Field: Transporter Name Field]    Use : Name Field   Set as : $Name   Storage : Name   Width : 30
+[Field: Transporter GSTIN Field]   Use : Name Field   Set as : $GSTIN  Storage : GSTIN  Width : 18
+[Field: Transporter Contact Field] Use : Name Field   Set as : $"Contact Details" Storage : "Contact Details" Width : 15
+[Field: Transporter Total Count]   Use : Number Field Set as : $$CollectionCount:Transport Transporters
+
+[Part: Transporter Detail Part]
+    Line  : Transporter PAN Line, Transporter Email Line
+    Border: Thin Right Left Bottom
+
+[Line: Transporter PAN Line]
+    Field : Name Prompt, Transporter PAN Field
+    Local : Field : Name Prompt : Set As : " PAN :"
+
+[Field: Transporter PAN Field]   Use : Name Field Set as : $PAN   Storage : PAN   Width : 15
+
+[Line: Transporter Email Line]
+    Field : Name Prompt, Transporter Email Field
+    Local : Field : Name Prompt : Set As : " Email :"
+
+[Field: Transporter Email Field] Use : Name Field Set as : $Email Storage : Email Width : 35
+
+;; -----------------------------------------------------------------------------
+;; SECTION 13: TRIP ENTRY VOUCHER UI (inject into Voucher Entry)
+;; -----------------------------------------------------------------------------
+[#Form: Voucher Entry]
+    Add Part : Trip Custom Form Part : After : VCH Narration
+
+[Part: Trip Custom Form Part]
+    Lines     : Trip Custom Condition Line
+    Invisible : NOT $$IsTransportTrip
+
+[System: Formula]
+    IsTransportTrip : $$Equal:$VoucherTypeName:"Transport Trip"
+
+[Line: Trip Custom Condition Line]
+    Parts   : Trip Basic Info Part, Trip Consignment Part, Trip Expense Part
+    Vertical: Yes
+
+;; Trip Basic
+[Part: Trip Basic Info Part]
+    Line  : Trip Info Title, Trip Vehicle Line, Trip Route Line, Trip Schedule Line, Trip Freight Line
+    Border: Thin Top Bottom
+
+[Line: Trip Info Title]
+    Field : Medium Prompt
+    Local : Field : Medium Prompt : Set As : "TRIP INFORMATION"
+    Style : Bold
+    Border: Thin Bottom
+
+[Line: Trip Vehicle Line]
+    Field : Name Prompt, Trip Vehicle Field, Name Prompt, Trip Driver Field, Name Prompt, Trip Transporter Field
+    Local : Field : Name Prompt : Set As : " Vehicle :" : " Driver :" : " Transporter :"
+
+[Field: Trip Vehicle Field]
+    Use        : Name Field
+    Set as     : $"Trip Vehicle Name"
+    Storage    : "Trip Vehicle Name"
+    Show Table : Always
+    Table      : Transport Vehicles
+    Name Full Name : Yes
+    Width      : 20
+
+[Field: Trip Driver Field]
+    Use        : Name Field
+    Set as     : $"Trip Driver Name"
+    Storage    : "Trip Driver Name"
+    Show Table : Always
+    Table      : Transport Drivers
+    Name Full Name : Yes
+    Width      : 20
+
+[Field: Trip Transporter Field]
+    Use        : Name Field
+    Set as     : $"Trip Transporter Name"
+    Storage    : "Trip Transporter Name"
+    Show Table : Always
+    Table      : Transport Transporters
+    Name Full Name : Yes
+    Width      : 20
+
+[Line: Trip Route Line]
+    Field : Name Prompt, Trip Source Field, Name Prompt, Trip Destination Field, Name Prompt, Trip Distance Field
+    Local : Field : Name Prompt : Set As : " Source :" : " Destination :" : " Distance KM :"
+
+[Field: Trip Source Field]      Use : Name Field   Set as : $"Trip Source Location"      Storage : "Trip Source Location"      Width : 20
+[Field: Trip Destination Field] Use : Name Field   Set as : $"Trip Destination Location" Storage : "Trip Destination Location"   Width : 20
+[Field: Trip Distance Field]    Use : Number Field Set as : $"Trip Distance KM"          Storage : "Trip Distance KM"           Width : 10  Format : "##,##0"
+
+[Line: Trip Schedule Line]
+    Field : Name Prompt, Trip Start Expected Field, Name Prompt, Trip End Expected Field, Name Prompt, Trip Status Field
+    Local : Field : Name Prompt : Set As : " Start (Exp) :" : " End (Exp) :" : " Status :"
+
+[Field: Trip Start Expected Field] Use : Short Date Field Set as : $"Trip Start Expected" Storage : "Trip Start Expected" Default : ##SVCurrentDate
+[Field: Trip End Expected Field]   Use : Short Date Field Set as : $"Trip End Expected"   Storage : "Trip End Expected"
+[Field: Trip Status Field]
+    Use        : Name Field
+    Set as     : $"Trip Current Status"
+    Storage    : "Trip Current Status"
+    Show Table : Always
+    Table      : List Trip Status, Format
+    Default    : "Planned"
+
+[Collection: List Trip Status]
+    Type  : List
+    Title : "Trip Status"
+    Format: "Planned"
+    Format: "In-Transit"
+    Format: "Completed"
+    Format: "Cancelled"
+    Format: "On Hold"
+
+[Line: Trip Freight Line]
+    Field : Name Prompt, Trip Freight Amount Field
+    Local : Field : Name Prompt : Set As : " Freight Amt :"
+
+[Field: Trip Freight Amount Field] Use : Amount Field Set as : $"Trip Freight Amount" Storage : "Trip Freight Amount" Width : 15
+
+;; Consignments
+[Part: Trip Consignment Part]
+    Line   : Trip Consignment Title, Trip Consignment Header, Trip Consignment Line
+    Repeat : Trip Consignment Line : Inventory Entries
+    Scroll : Vertical
+    Border : Thin Top Bottom
+
+[Line: Trip Consignment Title]
+    Field : Medium Prompt
+    Local : Field : Medium Prompt : Set As : "CONSIGNMENTS"
+    Style : Bold
+    Border: Thin Bottom
+
+[Line: Trip Consignment Header]
+    Field : Short Prompt, Medium Prompt, Short Date Prompt, Amount Prompt, Number Prompt, Number Prompt
+    Local : Field : Short  Prompt : Info : "Sr."
+    Local : Field : Medium Prompt : Info : "Invoice No."
+    Local : Field : Short  Date Prompt : Info : "Date"
+    Local : Field : Amount Prompt : Info : "Amount"
+    Local : Field : Number Prompt : Info : "Qty" : "Weight (KG)"
+    Border: Thin Bottom
+
+[Line: Trip Consignment Line]
+    Field : Consignment Serial, Consignment Invoice Field, Consignment Date Field, \
+            Consignment Amount Field, Consignment Quantity Field, Consignment Weight Field
+
+[Field: Consignment Serial]         Use : Number Field Set as : $$Line Width : 4 Align : Right
+[Field: Consignment Invoice Field]  Use : Name Field   Set as : $"Consignment Invoice No" Storage : "Consignment Invoice No" Width : 18
+[Field: Consignment Date Field]     Use : Short Date Field Set as : $"Consignment Date"   Storage : "Consignment Date"   Default : ##SVCurrentDate
+[Field: Consignment Amount Field]   Use : Amount Field Set as : $"Consignment Amount"     Storage : "Consignment Amount" Width : 15
+[Field: Consignment Quantity Field] Use : Number Field Set as : $"Consignment Quantity"   Storage : "Consignment Quantity" Width : 8 Format : "##,##0"
+[Field: Consignment Weight Field]   Use : Number Field Set as : $"Consignment Weight"     Storage : "Consignment Weight" Width : 10 Format : "##,##0.00"
+
+;; Expenses
+[Part: Trip Expense Part]
+    Line   : Trip Expense Title, Trip Expense Header, Trip Expense Line
+    Repeat : Trip Expense Line : Ledger Entries
+    Scroll : Vertical
+    Border : Thin Top Bottom
+
+[Line: Trip Expense Title]
+    Field : Medium Prompt
+    Local : Field : Medium Prompt : Set As : "TRIP EXPENSES"
+    Style : Bold
+    Border: Thin Bottom
+
+[Line: Trip Expense Header]
+    Field : Short Prompt, Medium Prompt, Amount Prompt, Medium Prompt, Short Date Prompt
+    Local : Field : Short  Prompt : Info : "Sr."
+    Local : Field : Medium Prompt : Info : "Expense Type" : "Reference"
+    Local : Field : Amount Prompt : Info : "Amount"
+    Local : Field : Short  Date Prompt : Info : "Date"
+    Border: Thin Bottom
+
+[Line: Trip Expense Line]
+    Field : Expense Serial, Trip Expense Type Field, Trip Expense Amount Field, \
+            Trip Expense Ref Field, Trip Expense Date Field
+
+[Field: Expense Serial]            Use : Number Field Set as : $$Line Width : 4 Align : Right
+[Field: Trip Expense Type Field]
+    Use        : Name Field
+    Set as     : $"Trip Expense Type"
+    Storage    : "Trip Expense Type"
+    Show Table : Always
+    Table      : List Expense Types, Format
+    Width      : 18
+
+[Collection: List Expense Types]
+    Type  : List
+    Title : "Expense Types"
+    Format: "Fuel"
+    Format: "Toll"
+    Format: "Driver Wages"
+    Format: "Maintenance"
+    Format: "Parking"
+    Format: "Loading/Unloading"
+    Format: "Other"
+
+[Field: Trip Expense Amount Field] Use : Amount Field Set as : $"Trip Expense Amount"    Storage : "Trip Expense Amount"    Width : 15
+[Field: Trip Expense Ref Field]    Use : Name Field   Set as : $"Trip Expense Reference" Storage : "Trip Expense Reference" Width : 18
+[Field: Trip Expense Date Field]   Use : Short Date Field Set as : $"Trip Expense Date"  Storage : "Trip Expense Date"      Default : ##SVCurrentDate
+
+;; -----------------------------------------------------------------------------
+;; SECTION 14: DASHBOARD
+;; -----------------------------------------------------------------------------
+[Report: Transport Dashboard Report]
+    Form  : Transport Dashboard Form
+    Title : "Transport Dashboard - Real-Time KPIs"
+    Auto Refresh : Yes
+
+[Form: Transport Dashboard Form]
+    Parts : Dashboard Header Part, Dashboard KPI Part, Dashboard Status Part, Dashboard Recent Part
+    Width : 100% Screen
+    Height: 100% Screen
+    Background : White
+
+[Part: Dashboard Header Part]
+    Line   : Dashboard Header Line
+    Full Height : No
+    Border : Thin Bottom
+
+[Line: Dashboard Header Line]
+    Field : Dashboard Title Field, Dashboard Date Field
+    Style : Bold
+
+[Field: Dashboard Title Field] Use : Name Field Set as : "TRANSPORT DASHBOARD" Width : 40 Align : Left  Style : Large Bold
+[Field: Dashboard Date Field]  Use : Name Field Set as : "Date: " + $$String:##SVCurrentDate Align : Right
+
+[Part: Dashboard KPI Part]
+    Line  : Dashboard KPI Line
+    Border: Thin Bottom
+
+[Line: Dashboard KPI Line]
+    Field : Dashboard Trips Today, Dashboard Consignments Today, Dashboard Upcoming, Dashboard Total Vehicles
+
+[Field: Dashboard Trips Today]        Use : Name Field Set as : "Trips Today" + $$NewLine + $$String:@@TripsTodayCount           Width : 20 Style : Bold Align : Center Color : "Blue"
+[Field: Dashboard Consignments Today] Use : Name Field Set as : "Consignments Today" + $$NewLine + $$String:@@ConsignmentsTodayCount Width : 20 Style : Bold Align : Center Color : "Green"
+[Field: Dashboard Upcoming]           Use : Name Field Set as : "Upcoming (24h)" + $$NewLine + $$String:@@UpcomingTripsCount     Width : 20 Style : Bold Align : Center Color : "Orange"
+[Field: Dashboard Total Vehicles]     Use : Name Field Set as : "Total Vehicles" + $$NewLine + $$String:@@TotalVehiclesCount     Width : 20 Style : Bold Align : Center Color : "Purple"
+
+[Part: Dashboard Status Part]
+    Line  : Dashboard Status Title, Dashboard Status Detail
+    Border: Thin Bottom
+
+[Line: Dashboard Status Title]
+    Field : Medium Prompt
+    Local : Field : Medium Prompt : Set As : "TRIP STATUS BREAKDOWN"
+    Style : Bold
+    Border: Thin Bottom
+
+[Line: Dashboard Status Detail]
+    Field : Status Planned, Status InTransit, Status Completed, Status Cancelled
+
+[Field: Status Planned]   Use : Name Field Set as : "Planned: "   + $$String:@@PlannedTripsCount   Width : 20 Color : "Blue"
+[Field: Status InTransit] Use : Name Field Set as : "In-Transit: "+ $$String:@@InTransitTripsCount Width : 20 Color : "Orange"
+[Field: Status Completed] Use : Name Field Set as : "Completed: " + $$String:@@CompletedTripsCount Width : 20 Color : "Green"
+[Field: Status Cancelled] Use : Name Field Set as : "Cancelled: " + $$String:$$CollectionCount:TripsCancelled Width : 20 Color : "Red"
+
+[Part: Dashboard Recent Part]
+    Line   : Dashboard Recent Title, Dashboard Recent Header, Dashboard Recent Line
+    Repeat : Dashboard Recent Line : TripsToday
+    Scroll : Vertical
+
+[Line: Dashboard Recent Title]
+    Field : Medium Prompt
+    Local : Field : Medium Prompt : Set As : "TODAY'S TRIPS"
+    Style : Bold
+    Border: Thin Bottom
+
+[Line: Dashboard Recent Header]
+    Field : Short Prompt, Medium Prompt, Medium Prompt, Medium Prompt, Medium Prompt
+    Local : Field : Short  Prompt : Info : "Trip#"
+    Local : Field : Medium Prompt : Info : "Vehicle" : "Route" : "Driver" : "Status"
+    Border: Thin Bottom
+    Style : Bold
+
+[Line: Dashboard Recent Line]
+    Field : Dashboard Trip Number, Dashboard Trip Vehicle, Dashboard Trip Route, Dashboard Trip Driver, Dashboard Trip Status
+
+[Field: Dashboard Trip Number] Use : Name Field Set as : $VoucherNumber                    Width : 10
+[Field: Dashboard Trip Vehicle]Use : Name Field Set as : $"Trip Vehicle Name"              Width : 18
+[Field: Dashboard Trip Route]  Use : Name Field Set as : $"Trip Source Location" + " → " + $"Trip Destination Location" Width : 30
+[Field: Dashboard Trip Driver] Use : Name Field Set as : $"Trip Driver Name"               Width : 18
+[Field: Dashboard Trip Status] Use : Name Field Set as : $"Trip Current Status"            Width : 15 Style : Bold
+
+;; -----------------------------------------------------------------------------
+;; SECTION 15: TRIP REGISTER
+;; -----------------------------------------------------------------------------
+[Report: Transport Trip Register Report]
+    Form  : Transport Trip Register Form
+    Title : "Trip Register"
+    Button: "Export to Excel", "Print"      ;; (Buttons optional; omit execution wiring here)
+
+[Form: Transport Trip Register Form]
+    Parts : Trip Register Filter Part, Trip Register List Part
+    Width : 100% Screen
+
+[Part: Trip Register Filter Part]
+    Line  : Trip Register Filter Line
+    Border: Thin Bottom
+
+[Line: Trip Register Filter Line]
+    Field : Name Prompt, Filter Status Field, Name Prompt, Filter From Date, Name Prompt, Filter To Date
+    Local : Field : Name Prompt : Set As : " Status:" : " From:" : " To:"
+
+[Field: Filter Status Field]
+    Use        : Name Field
+    Storage    : SVFilterStatus
+    Show Table : Always
+    Table      : List Trip Status, Format
+    Default    : "All"
+
+[Field: Filter From Date] Use : Short Date Field Storage : SVFromDate Default : ##SVCurrentPeriodFrom
+[Field: Filter To Date]   Use : Short Date Field Storage : SVToDate   Default : ##SVCurrentPeriodTo
+
+[Part: Trip Register List Part]
+    Line          : Trip Register Header, Trip Register Detail
+    Repeat        : Trip Register Detail : TripsTransport
+    Scroll        : Vertical
+    Common Border : Yes
+
+[Line: Trip Register Header]
+    Field : Short Prompt, Short Date Prompt, Medium Prompt, Medium Prompt, Medium Prompt, Medium Prompt, Amount Prompt
+    Local : Field : Short  Prompt     : Info : "Trip#"
+    Local : Field : Short  Date Prompt: Info : "Date"
+    Local : Field : Medium Prompt     : Info : "Vehicle" : "Route" : "Driver" : "Status"
+    Local : Field : Amount Prompt     : Info : "Freight"
+    Border: Thin Bottom
+    Style : Bold
+
+[Line: Trip Register Detail]
+    Field   : Register Trip Number, Register Trip Date, Register Trip Vehicle, \
+              Register Trip Route, Register Trip Driver, Register Trip Status, Register Trip Freight
+    Explode : Trip Register Explode Part
+
+[Field: Register Trip Number] Use : Name Field     Set as : $VoucherNumber                    Width : 10
+[Field: Register Trip Date]   Use : Short Date Field Set as : $Date                           Width : 12
+[Field: Register Trip Vehicle]Use : Name Field     Set as : $"Trip Vehicle Name"             Width : 18
+[Field: Register Trip Route]  Use : Name Field     Set as : $"Trip Source Location" + " → " + $"Trip Destination Location" Width : 35
+[Field: Register Trip Driver] Use : Name Field     Set as : $"Trip Driver Name"              Width : 18
+[Field: Register Trip Status] Use : Name Field     Set as : $"Trip Current Status"           Width : 12 Style : Bold
+[Field: Register Trip Freight]Use : Amount Field   Set as : $"Trip Freight Amount"           Width : 15
+
+[Part: Trip Register Explode Part]
+    Line  : Explode Dates Line, Explode Distance Line, Explode Consignment Count, Explode Total Expense
+    Border: Thin Right Left Bottom
+
+[Line: Explode Dates Line]
+    Field : Name Prompt, Explode Start Date, Name Prompt, Explode End Date
+    Local : Field : Name Prompt : Set As : " Start Date:" : " End Date:"
+
+[Field: Explode Start Date] Use : Short Date Field Set as : $"Trip Start Expected" Width : 12
+[Field: Explode End Date]   Use : Short Date Field Set as : $"Trip End Expected"   Width : 12
+
+[Line: Explode Distance Line]
+    Field : Name Prompt, Explode Distance
+    Local : Field : Name Prompt : Set As : " Distance :"
+
+[Field: Explode Distance]   Use : Name Field Set as : $$String:$"Trip Distance KM" + " KM" Width : 15
+
+[Line: Explode Consignment Count]
+    Field : Name Prompt, Explode Consignments
+    Local : Field : Name Prompt : Set As : " Consignments:"
+
+[Field: Explode Consignments] Use : Number Field Set as : $$CollectionCount:$$CollInvEntries Width : 8
+
+[Line: Explode Total Expense]
+    Field : Name Prompt, Explode Expense Amount
+    Local : Field : Name Prompt : Set As : " Total Expense:"
+
+[Field: Explode Expense Amount] Use : Amount Field Set as : @@TotalExpenseForTrip Width : 15
+
+;; -----------------------------------------------------------------------------
+;; SECTION 16: VEHICLE EXPENSE REPORT
+;; -----------------------------------------------------------------------------
+[Report: Transport Expense Report]
+    Form  : Transport Expense Form
+    Title : "Vehicle Expense Analysis"
+
+[Form: Transport Expense Form]
+    Parts : Expense Summary Part, Expense Detail Part
+
+[Part: Expense Summary Part]
+    Line  : Expense Summary Title, Expense Summary Line
+    Border: Thin Bottom
+
+[Line: Expense Summary Title]
+    Field : Medium Prompt
+    Local : Field : Medium Prompt : Set As : "EXPENSE SUMMARY BY VEHICLE"
+    Style : Bold
+    Border: Thin Bottom
+
+[Line: Expense Summary Line]
+    Field : Summary Total Label, Summary Total Amount
+    Local : Field : Summary Total Label : Set As : "Total Expenses (All Vehicles):"
+    Style : Bold
+
+[Field: Summary Total Label]  Use : Name Field   Width : 40
+[Field: Summary Total Amount] Use : Amount Field Set as : @@TotalAllExpenses Width : 15 Style : Bold Color : "Red"
+
+[Part: Expense Detail Part]
+    Line          : Expense Detail Header, Expense Detail Line
+    Repeat        : Expense Detail Line : TripsTransport
+    Scroll        : Vertical
+    Common Border : Yes
+
+[Line: Expense Detail Header]
+    Field : Short Prompt, Medium Prompt, Medium Prompt, Short Date Prompt, Amount Prompt
+    Local : Field : Short  Prompt     : Info : "Trip#"
+    Local : Field : Medium Prompt     : Info : "Vehicle" : "Route"
+    Local : Field : Short  Date Prompt: Info : "Date"
+    Local : Field : Amount Prompt     : Info : "Total Expense"
+    Border: Thin Bottom
+    Style : Bold
+
+[Line: Expense Detail Line]
+    Field   : Expense Trip Number, Expense Vehicle Name, Expense Route, Expense Date, Expense Total Amount
+    Explode : Expense Breakdown Part
+
+[Field: Expense Trip Number] Use : Name Field     Set as : $VoucherNumber                                Width : 10
+[Field: Expense Vehicle Name]Use : Name Field     Set as : $"Trip Vehicle Name"                           Width : 18
+[Field: Expense Route]       Use : Name Field     Set as : $"Trip Source Location" + "-" + $"Trip Destination Location" Width : 30
+[Field: Expense Date]        Use : Short Date Field Set as : $Date                                         Width : 12
+[Field: Expense Total Amount]Use : Amount Field   Set as : @@TotalExpenseForTrip                           Width : 15
+
+[Part: Expense Breakdown Part]
+    Line  : Expense Breakdown Header, Expense Breakdown Line
+    Repeat: Expense Breakdown Line : Ledger Entries
+    Border: Thin Right Left Bottom
+
+[Line: Expense Breakdown Header]
+    Field : Name Prompt, Medium Prompt, Amount Prompt, Medium Prompt
+    Local : Field : Name Prompt     : Set As : " Expense Breakdown:"
+    Local : Field : Medium Prompt   : Info : "Type" : "Reference"
+    Local : Field : Amount Prompt   : Info : "Amount"
+    Border: Thin Bottom
+
+[Line: Expense Breakdown Line]
+    Field : Breakdown Type, Breakdown Amount, Breakdown Ref
+
+[Field: Breakdown Type]   Use : Name Field   Set as : " " + $"Trip Expense Type"       Width : 20
+[Field: Breakdown Amount] Use : Amount Field Set as : $"Trip Expense Amount"            Width : 15
+[Field: Breakdown Ref]    Use : Name Field   Set as : $"Trip Expense Reference"         Width : 20
+
+;; -----------------------------------------------------------------------------
+;; SECTION 17: CONSIGNMENT TRACKING REPORT
+;; -----------------------------------------------------------------------------
+[Report: Transport Consignment Report]
+    Form  : Transport Consignment Form
+    Title : "Consignment Tracking Report"
+
+[Form: Transport Consignment Form]
+    Parts : Consignment Summary Part, Consignment Detail Part
+
+[Part: Consignment Summary Part]
+    Line  : Consignment Summary Line
+    Border: Thin Bottom
+
+[Line: Consignment Summary Line]
+    Field : Consignment Count Label, Consignment Count Value, Consignment Weight Label, Consignment Weight Value
+    Style : Bold
+
+[Field: Consignment Count Label]  Use : Name Field   Set as : "Total Consignments:" Width : 25
+[Field: Consignment Count Value]  Use : Number Field Set as : $$CollectionCount:TripConsignmentsAll Width : 10 Color : "Blue"
+[Field: Consignment Weight Label] Use : Name Field   Set as : "Total Weight:"        Width : 20
+[Field: Consignment Weight Value] Use : Number Field Set as : $$Total:TripConsignmentsAll:$"Consignment Weight" Width : 15 Format : "##,##,##0.00 KG" Color : "Green"
+
+[Part: Consignment Detail Part]
+    Line          : Consignment Header Line, Consignment Detail Line
+    Repeat        : Consignment Detail Line : TripConsignmentsAll
+    Scroll        : Vertical
+    Common Border : Yes
+
+[Line: Consignment Header Line]
+    Field : Short Prompt, Medium Prompt, Short Date Prompt, Medium Prompt, Amount Prompt, Number Prompt, Number Prompt, Medium Prompt
+    Local : Field : Short  Prompt     : Info : "Sr."
+    Local : Field : Medium Prompt     : Info : "Invoice No." : "Trip No." : "Status"
+    Local : Field : Short  Date Prompt: Info : "Date"
+    Local : Field : Amount Prompt     : Info : "Amount"
+    Local : Field : Number Prompt     : Info : "Qty" : "Weight"
+    Border: Thin Bottom
+    Style : Bold
+
+[Line: Consignment Detail Line]
+    Field : Consignment Line Number, Consignment Invoice No, Consignment Invoice Date, \
+            Consignment Trip No, Consignment Invoice Amount, Consignment Qty, Consignment Wt, Consignment Trip Status
+
+[Field: Consignment Line Number] Use : Number Field Set as : $$Line Width : 4 Align : Right
+[Field: Consignment Invoice No]  Use : Name Field   Set as : $"Consignment Invoice No" Width : 18
+[Field: Consignment Invoice Date]Use : Short Date Field Set as : $"Consignment Date"   Width : 12
+[Field: Consignment Trip No]     Use : Name Field   Set as : $MasterID                 Width : 15
+[Field: Consignment Invoice Amount]Use : Amount Field Set as : $"Consignment Amount"   Width : 15
+[Field: Consignment Qty]         Use : Number Field Set as : $"Consignment Quantity"   Width : 8  Format : "##,##0"
+[Field: Consignment Wt]          Use : Number Field Set as : $"Consignment Weight"     Width : 10 Format : "##,##0.00"
+[Field: Consignment Trip Status] Use : Name Field   Set as : $$Owner:$"Trip Current Status" Width : 15 Style : Bold
+
+;; -----------------------------------------------------------------------------
+;; SECTION 18: VEHICLE UTILIZATION REPORT
+;; -----------------------------------------------------------------------------
+[Report: Transport Utilization Report]
+    Form  : Transport Utilization Form
+    Title : "Vehicle Utilization Analysis"
+
+[Form: Transport Utilization Form]
+    Parts : Utilization Summary Part, Utilization Detail Part
+
+[Part: Utilization Summary Part]
+    Line  : Utilization Title Line, Utilization Stats Line
+    Border: Thin Bottom
+
+[Line: Utilization Title Line]
+    Field : Medium Prompt
+    Local : Field : Medium Prompt : Set As : "VEHICLE UTILIZATION SUMMARY"
+    Style : Bold Large
+    Border: Thin Bottom
+
+[Line: Utilization Stats Line]
+    Field : Util Active Vehicles, Util Total Trips, Util Avg Distance, Util Avg Freight
+
+[Field: Util Active Vehicles] Use : Name Field Set as : "Active Vehicles" + $$NewLine + $$String:@@TotalVehiclesCount Width : 20 Align : Center Style : Bold Color : "Blue"
+[Field: Util Total Trips]     Use : Name Field Set as : "Total Trips"   + $$NewLine + $$String:$$CollectionCount:TripsTransport Width : 20 Align : Center Style : Bold Color : "Green"
+[Field: Util Avg Distance]    Use : Name Field Set as : "Avg Distance (KM)" + $$NewLine + $$String:@@AvgDistance Width : 20 Align : Center Style : Bold Color : "Orange"
+[Field: Util Avg Freight]     Use : Name Field Set as : "Avg Freight"       + $$NewLine + $$String:@@AvgFreight  Width : 20 Align : Center Style : Bold Color : "Purple"
+
+[Part: Utilization Detail Part]
+    Line          : Utilization Header Line, Utilization Vehicle Line
+    Repeat        : Utilization Vehicle Line : Transport Vehicles
+    Scroll        : Vertical
+    Common Border : Yes
+
+[Line: Utilization Header Line]
+    Field : Short Prompt, Medium Prompt, Number Prompt, Number Prompt, Amount Prompt, Number Prompt
+    Local : Field : Short  Prompt  : Info : "Sr."
+    Local : Field : Medium Prompt  : Info : "Vehicle Name"
+    Local : Field : Number Prompt  : Info : "Total Trips" : "Total KM" 
+    Local : Field : Amount Prompt  : Info : "Total Freight"
+    Local : Field : Number Prompt  : Info : "Avg KM/Trip"
+    Border: Thin Bottom
+    Style : Bold
+
+[Line: Utilization Vehicle Line]
+    Field : Util Serial No, Util Vehicle Name, Util Trip Count, Util Total Distance, Util Total Freight, Util Avg Trip Distance
+
+[Field: Util Serial No]   Use : Number Field Set as : $$Line Width : 4
+[Field: Util Vehicle Name]Use : Name Field   Set as : $Name      Width : 25
+
+;; Counts & totals per vehicle using predicates over TripsTransport
+[Field: Util Trip Count]
+    Use    : Number Field
+    Set as : $$Count:TripsTransport:$$Equal:$"Trip Vehicle Name":$$Value
+    Width  : 12
+    Format : "##,##0"
+
+[Field: Util Total Distance]
+    Use    : Number Field
+    Set as : $$Total:TripsTransport:$"Trip Distance KM":$$Equal:$"Trip Vehicle Name":$$Value
+    Width  : 12
+    Format : "##,##0"
+
+[Field: Util Total Freight]
+    Use    : Amount Field
+    Set as : $$Total:TripsTransport:$"Trip Freight Amount":$$Equal:$"Trip Vehicle Name":$$Value
+    Width  : 15
+
+[Field: Util Avg Trip Distance]
+    Use    : Number Field
+    Set as : IF $$IsZero:$$Count:TripsTransport:$$Equal:$"Trip Vehicle Name":$$Value \
+             THEN 0 \
+             ELSE ( $$Total:TripsTransport:$"Trip Distance KM":$$Equal:$"Trip Vehicle Name":$$Value \
+                    / $$Count:TripsTransport:$$Equal:$"Trip Vehicle Name":$$Value )
+    Width  : 12
+    Format : "##,##0.00"
+
+;; -----------------------------------------------------------------------------
+;; SECTION 19: HELPER FUNCTIONS
+;; -----------------------------------------------------------------------------
+[Function: Validate Vehicle Number]
+    Parameter : VehicleNo : String
+    Returns   : Logical
+    Variable  : IsValid   : Logical : Yes
+
+010 : Set     : IsValid : NOT $$IsEmpty:##VehicleNo
+020 : IF      : $$IsEmpty:##VehicleNo
+030 :     MSG INFO : "Vehicle Number cannot be empty"
+040 :     Set : IsValid : No
+050 : END IF
+100 : Return  : ##IsValid
+
+[Function: Calculate Trip Duration]
+    Parameter : StartDate : Date
+    Parameter : EndDate   : Date
+    Returns   : Number
+
+010 : RETURN : $$DiffDays:##StartDate:##EndDate
+
+;; -----------------------------------------------------------------------------
+;; SECTION 20: EXPORT PLACEHOLDER
+;; -----------------------------------------------------------------------------
+[Report: Export Transport Data]
+    Form  : Export Transport Form
+    Title : "Export Transport Data to XML"
+
+[Form: Export Transport Form]
+    Parts : Export Options Part
+
+[Part: Export Options Part]
+    Line  : Export Selection Line, Export Button Line
+
+[Line: Export Selection Line]
+    Field : Export Vehicles Check, Export Drivers Check, Export Trips Check
+
+[Field: Export Vehicles Check] Use : Logical Field Storage : SVExportVehicles Info : "Export Vehicles"      Default : Yes
+[Field: Export Drivers Check]  Use : Logical Field Storage : SVExportDrivers  Info : "Export Drivers"       Default : Yes
+[Field: Export Trips Check]    Use : Logical Field Storage : SVExportTrips    Info : "Export Trip Register" Default : Yes
+
+[Line: Export Button Line]
+    Field : Export Execute Button
+
+[Field: Export Execute Button]
+    Use : Name Field
+    Info: "Press Enter to Export"
+    Key : Enter : Action : Export Transport Action
+
+[Action: Export Transport Action]
+    MSG INFO : "Export functionality requires custom XML handler implementation"
+
+;; =============================================================================
+;; END OF FILE
+;; =============================================================================
