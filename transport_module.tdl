@@ -115,7 +115,7 @@
 ;; Vouchers & UDF storage for trips, consignments, expenses
 ;; ------------------------------------------------------------------------------
 
-[Object: Voucher]
+[#Object: Voucher]
     Trip Vehicle Name         : String    : TTripVehicleName
     Trip Driver Name          : String    : TTripDriverName
     Trip Transporter Name     : String    : TTripTransporterName
@@ -127,14 +127,14 @@
     Trip End Actual           : Date      : TTripEndActual
     Trip Current Status       : String    : TTripStatus
 
-[Object: Inventory Entries]
+[#Object: Inventory Entries]
     Consignment Invoice No    : String    : TConsignmentInvoiceNo
     Consignment Date          : Date      : TConsignmentDate
     Consignment Amount        : Amount    : TConsignmentAmount
     Consignment Quantity      : Number    : TConsignmentQuantity
     Consignment Weight        : Number    : TConsignmentWeight
 
-[Object: Ledger Entries]
+[#Object: Ledger Entries]
     Trip Expense Type         : String    : TTripExpenseType
     Trip Expense Amount       : Amount    : TTripExpenseAmount
     Trip Expense Reference    : String    : TTripExpenseRef
