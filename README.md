@@ -100,3 +100,6 @@ Workflow Example: Creating and Tracking a Trip
 
 This product vision lays the groundwork for a powerful and user-friendly Transport Module within Tally Prime, designed to meet the practical needs of businesses managing their logistics operations.
 
+Learn TDL from here 
+TDL reference : https://tallymirror.tallysolutions.com/download_centre/TD9Documents/TDL%20Documentation/TDL_Reference_Manual.pdf
+
