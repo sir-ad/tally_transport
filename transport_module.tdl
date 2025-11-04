@@ -225,26 +225,32 @@
 [Field: Vehicle Number Field]
     Use                       : Name Field
     Set as                    : $Vehicle Number
+    Storage                   : Vehicle Number
 
 [Field: Vehicle Type Field]
     Use                       : Name Field
     Set as                    : $Vehicle Type
+    Storage                   : Vehicle Type
 
 [Field: Vehicle Capacity Field]
     Use                       : Amount Field
     Set as                    : $"Capacity (MT)"
+    Storage                   : "Capacity (MT)"
 
 [Field: Vehicle Owner Type Field]
     Use                       : Name Field
     Set as                    : $"Owner Type"
+    Storage                   : "Owner Type"
 
 [Field: Vehicle Insurance Field]
     Use                       : Name Field
     Set as                    : $"Insurance Details"
+    Storage                   : "Insurance Details"
 
 [Field: Vehicle Permit Field]
     Use                       : Name Field
     Set as                    : $"Permit Details"
+    Storage                   : "Permit Details"
 
 [Field: Vehicle Serial Field]
     Use                       : Number Field
@@ -287,14 +293,17 @@
 [Field: Driver License Field]
     Use                       : Name Field
     Set as                    : $"License Number"
+    Storage                   : "License Number"
 
 [Field: Driver Contact Field]
     Use                       : Name Field
     Set as                    : $"Contact Details"
+    Storage                   : "Contact Details"
 
 [Field: Driver Address Field]
     Use                       : Name Field
     Set as                    : $Address
+    Storage                   : Address
 
 [Action: Create Transport Driver]
     Object                    : Transport Driver
@@ -333,10 +342,12 @@
 [Field: Transporter Contact Field]
     Use                       : Name Field
     Set as                    : $"Contact Details"
+    Storage                   : "Contact Details"
 
 [Field: Transporter GSTIN Field]
     Use                       : Name Field
     Set as                    : $GSTIN
+    Storage                   : GSTIN
 
 [Action: Create Transport Transporter]
     Object                    : Transport Transporter
@@ -377,29 +388,35 @@
     Use                       : Name Field
     Set as                    : $"Trip Vehicle Name"
     Table                     : Transport Vehicles
+    Storage                   : "Trip Vehicle Name"
 
 [Field: Trip Driver Field]
     Use                       : Name Field
     Set as                    : $"Trip Driver Name"
     Table                     : Transport Drivers
+    Storage                   : "Trip Driver Name"
 
 [Field: Trip Transporter Field]
     Use                       : Name Field
     Set as                    : $"Trip Transporter Name"
     Table                     : Transport Transporters
+    Storage                   : "Trip Transporter Name"
 
 [Field: Trip Source Field]
     Use                       : Name Field
     Set as                    : $"Trip Source Location"
+    Storage                   : "Trip Source Location"
 
 [Field: Trip Destination Field]
     Use                       : Name Field
     Set as                    : $"Trip Destination Location"
+    Storage                   : "Trip Destination Location"
 
 [Field: Trip Status Field]
     Use                       : Name Field
     Set as                    : $"Trip Current Status"
     Table                     : List Status Values
+    Storage                   : "Trip Current Status"
 
 [Collection: List Status Values]
     Type                      : List
@@ -412,18 +429,22 @@
 [Field: Trip Expected Start Field]
     Use                       : Short Date Field
     Set as                    : $"Trip Start Expected"
+    Storage                   : "Trip Start Expected"
 
 [Field: Trip Expected End Field]
     Use                       : Short Date Field
     Set as                    : $"Trip End Expected"
+    Storage                   : "Trip End Expected"
 
 [Field: Trip Actual Start Field]
     Use                       : Short Date Field
     Set as                    : $"Trip Start Actual"
+    Storage                   : "Trip Start Actual"
 
 [Field: Trip Actual End Field]
     Use                       : Short Date Field
     Set as                    : $"Trip End Actual"
+    Storage                   : "Trip End Actual"
 
 [Part: Trip Consignment Title]
     Line                      : Trip Consignment Header
@@ -438,22 +459,27 @@
 [Field: Consignment Invoice Field]
     Use                       : Name Field
     Set as                    : $"Consignment Invoice No"
+    Storage                   : "Consignment Invoice No"
 
 [Field: Consignment Date Field]
     Use                       : Short Date Field
     Set as                    : $"Consignment Date"
+    Storage                   : "Consignment Date"
 
 [Field: Consignment Amount Field]
     Use                       : Amount Field
     Set as                    : $"Consignment Amount"
+    Storage                   : "Consignment Amount"
 
 [Field: Consignment Quantity Field]
     Use                       : Number Field
     Set as                    : $"Consignment Quantity"
+    Storage                   : "Consignment Quantity"
 
 [Field: Consignment Weight Field]
     Use                       : Number Field
     Set as                    : $"Consignment Weight"
+    Storage                   : "Consignment Weight"
 
 [Part: Trip Expense Title]
     Line                      : Trip Expense Header
@@ -469,6 +495,7 @@
     Use                       : Name Field
     Set as                    : $"Trip Expense Type"
     Table                     : List Expense Types
+    Storage                   : "Trip Expense Type"
 
 [Collection: List Expense Types]
     Type                      : List
@@ -482,10 +509,12 @@
 [Field: Trip Expense Amount Field]
     Use                       : Amount Field
     Set as                    : $"Trip Expense Amount"
+    Storage                   : "Trip Expense Amount"
 
 [Field: Trip Expense Ref Field]
     Use                       : Name Field
     Set as                    : $"Trip Expense Reference"
+    Storage                   : "Trip Expense Reference"
 
 ;; ------------------------------------------------------------------------------
 ;; Dashboard Report
