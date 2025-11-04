@@ -98,5 +98,5 @@ Workflow Example: Creating and Tracking a Trip
 5. Record Expenses: Enters trip-related expenses (fuel, tolls) against the trip.
 6. Monitor Dashboard: Views the Transport Dashboard for real-time status updates and KPIs.
 
-This product vision lays the groundwork for a powerful and user-friendly Transport Module within Tally Prime, designed to meet the practical needs of businesses managing their logistics. [1]
+This product vision lays the groundwork for a powerful and user-friendly Transport Module within Tally Prime, designed to meet the practical needs of businesses managing their logistics operations.
 
